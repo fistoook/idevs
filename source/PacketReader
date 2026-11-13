@@ -1,0 +1,5 @@
+from scapy import scapy
+
+class packetReader:
+    def __init__(self):
+        pass
