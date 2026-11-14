@@ -4,8 +4,9 @@ from errHandler import errHandler
 WELCOME_MSG = "Welcome to idevs!"
 
 class Tui:
-    def __init__(self):
-        self.packet_reader = PacketReader()
+    def __init__(self, packet_queue):
+        self.packet_queue = packet_queue
+        self.packet_reader = PacketReader(packet_queue)
         self.err_handler = errHandler()
 
     def run(self):

@@ -7,3 +7,9 @@ class errHandler:
 
     def errTooManyArgs(self):
         print("Too many arguments. type 'help' for help")
+
+class InterfaceNotFoundError(Exception):
+    pass
+
+class ReaderNotRunningError(Exception):
+    pass
