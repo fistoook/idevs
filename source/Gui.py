@@ -1,62 +1,77 @@
-import sys
-from PySide6.QtWidgets import QMainWindow, QLabel, QWidget, QVBoxLayout, QHBoxLayout, QGridLayout, QStackedWidget
-from PySide6.QtCore import Qt
+from PySide6.QtWidgets import QMainWindow, QLabel, QWidget, QVBoxLayout, QHBoxLayout, QGridLayout, QStackedWidget, QPushButton, QListWidget
+from PySide6.QtCore import Qt, Signal
 
 class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
 
+        self.setWindowTitle("IdevS")
+
         self.pages = QStackedWidget()
-
-        home_window = HomeWindow()
-        capture_window = CaptureWindow()
-
         self.setCentralWidget(self.pages)
 
-        self.pages.addWidget(home_window)
-        self.pages.addWidget(capture_window)
+        self.init_pages()
+        self.init_connectors()
 
-        self.pages.setCurrentWidget(capture_window)
+        self.pages.setCurrentWidget(self.home_page)
 
-class HomeWindow(QWidget):
-    def __init__(self):
-        super().__init__()
+    def init_pages(self):
+        self.home_page = HomePage()
+        self.capture_page = CapturePage()
 
-        layout = QVBoxLayout(self)
+        self.pages.addWidget(self.home_page)
+        self.pages.addWidget(self.capture_page)
 
-        label1 = QLabel("Interface 1")
-        label2 = QLabel("Interface 2")
-        label3 = QLabel("Interface 3")
-        label4 = QLabel("Interface 4")
+    def init_connectors(self):
+        self.home_page.capture_request.connect(self.start_capture)
 
-        label1.setAlignment(Qt.AlignCenter)
-        label2.setAlignment(Qt.AlignCenter)
-        label3.setAlignment(Qt.AlignCenter)
-        label4.setAlignment(Qt.AlignCenter)
+    def start_capture(self, interface):
+        self.pages.setCurrentWidget(self.capture_page)
+        print(interface)
 
-        layout.addWidget(label1)
-        layout.addWidget(label2)
-        layout.addWidget(label3)
-        layout.addWidget(label4)
+class HomePage(QWidget):
+    capture_request = Signal(str)
 
-class CaptureWindow(QWidget):
     def __init__(self):
         super().__init__()
         
-        layout = QVBoxLayout(self)
+        self.layout = QVBoxLayout(self)
 
-        label1 = QLabel("Packet 1")
-        label2 = QLabel("Packet 2")
-        label3 = QLabel("Packet 3")
-        label4 = QLabel("Packet 4")
+        self.label = QLabel("Welcome. select your interface.")
+
+        self.list = QListWidget()
+        self.list.addItems(["interface 1", "interface 2", "interface 3"])
+
+        self.button = QPushButton("press me")
+        self.button.clicked.connect(self.request_capture)
+
+        self.layout.addWidget(self.label)
+        self.layout.addWidget(self.list)
+        self.layout.addWidget(self.button)
+
+    def request_capture(self):
+        interface = self.list.currentItem()
+
+        if interface is not None:
+            self.capture_request.emit(interface.text())
+
+class CapturePage(QWidget):
+    def __init__(self):
+        super().__init__()
+        
+        layout = QGridLayout(self)
+
+        label1 = QLabel("Number")
+        label2 = QLabel("Source")
+        label3 = QLabel("Destanation")
+        label4 = QLabel("Protocol")
 
         label1.setAlignment(Qt.AlignCenter)
         label2.setAlignment(Qt.AlignCenter)
         label3.setAlignment(Qt.AlignCenter)
         label4.setAlignment(Qt.AlignCenter)
 
-        layout.addWidget(label1)
-        layout.addWidget(label2)
-        layout.addWidget(label3)
-        layout.addWidget(label4)
-
+        layout.addWidget(label1, 0, 0)
+        layout.addWidget(label2, 0, 1)
+        layout.addWidget(label3, 0, 2)
+        layout.addWidget(label4, 0, 3)

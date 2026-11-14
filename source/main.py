@@ -1,4 +1,3 @@
-from Tui import Tui
 from PySide6.QtWidgets import QApplication
 from Gui import MainWindow
 
