@@ -3,7 +3,7 @@ from errHandler import errHandler
 
 WELCOME_MSG = "Welcome to idevs!"
 
-class tui:
+class Tui:
     def __init__(self):
         self.packet_reader = PacketReader()
         self.err_handler = errHandler()

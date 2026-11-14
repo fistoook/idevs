@@ -1,8 +1,15 @@
-from tui import tui
+from Tui import Tui
+from PySide6.QtWidgets import QApplication
+from Gui import MainWindow
 
 def main():
-    user_interface = tui()
-    user_interface.run()
+    app = QApplication()
+    window = MainWindow()
+
+    window.show()
+    app.exec()
+
+
 
 if __name__ == "__main__":
     main()
