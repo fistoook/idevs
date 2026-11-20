@@ -18,8 +18,10 @@ class PacketReader:
             except InterfaceNotFoundError:
                 return None 
 
+            # start a background sniffing thread
             self.sniffer = AsyncSniffer(prn=self.handle_packet, store=False, iface=self.iface)
             self.sniffer.start()
+
         else:
             source_path = Path(source)
             if source_path.is_file():

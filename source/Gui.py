@@ -1,4 +1,4 @@
-from PySide6.QtWidgets import QMainWindow, QLabel, QWidget, QVBoxLayout, QHBoxLayout, QGridLayout, QStackedWidget, QPushButton, QToolButton, QListWidget, QTableWidget, QTableWidgetItem
+from PySide6.QtWidgets import QMainWindow, QLabel, QWidget, QVBoxLayout, QHBoxLayout, QGridLayout, QStackedWidget, QPushButton, QToolButton, QListWidget, QTableWidget, QTableWidgetItem, QTreeWidget, QTreeWidgetItem
 from PySide6.QtCore import Qt, Signal, QTimer, QSize
 from PySide6.QtGui import QIcon
 from queue import Empty
@@ -41,6 +41,7 @@ class MainWindow(QMainWindow):
     def begin_capture(self, interface):
         self.curr_interface = interface
         self.pages.setCurrentWidget(self.capture_page)
+
         try:
             self.packet_reader.read(interface)
         except InterfaceNotFoundError:
@@ -78,6 +79,9 @@ class MainWindow(QMainWindow):
         self.stop_capture()
         super().closeEvent(event)
 
+
+
+
 class HomePage(QWidget):
     capture_request = Signal(str)
 
@@ -88,22 +92,56 @@ class HomePage(QWidget):
 
         self.label = QLabel("Welcome. select your interface.")
 
-        self.list = QListWidget()
-        for iface in ifaces:
-            self.list.addItem(iface.name)
+        # initilialize the interface tree, style it, and populate it
+        self.interface_tree = QTreeWidget()
+        self.interface_tree.setHeaderLabels(["Interface", "Address"])
+        self.interface_tree.setColumnWidth(0, 200)
+        self.interface_tree.setAlternatingRowColors(True)
+        self.populate_interfaces(ifaces)
 
         self.button = QPushButton("Select interface")
         self.button.clicked.connect(self.request_capture)
 
         self.layout.addWidget(self.label)
-        self.layout.addWidget(self.list)
+        self.layout.addWidget(self.interface_tree)
         self.layout.addWidget(self.button)
 
+    def populate_interfaces(self, ifaces):
+        self.interface_tree.clear()
+
+        for iface in ifaces:
+            parent = QTreeWidgetItem(self.interface_tree, [iface.name or "Unknown", iface.ip or "-"])
+
+            # preserve the actual Scapy interface object for later
+            parent.setData(0, Qt.ItemDataRole.UserRole, iface.name)
+
+            # information displayed when expanded
+            details = {
+                "Description": iface.description,
+                "MAC Address": iface.mac,
+                "IPv4 Addresses": ", ".join(iface.ips[4]),
+                "IPv6 Addresses": ", ".join(iface.ips[6]),
+                "Index": iface.index,
+                "Network Name": iface.network_name,
+            }
+
+            # populate details in the parent
+            for label, value in details.items():
+                QTreeWidgetItem(parent, [label, str(value) if value else "N/A"])
+
+            # do not show the details initally
+            parent.setExpanded(False)
+
+
     def request_capture(self):
-        self.interface = self.list.currentItem()
+        self.interface = self.interface_tree.currentItem()
 
         if self.interface is not None:
-            self.capture_request.emit(self.interface.text())
+            self.capture_request.emit(self.interface.data(0, Qt.ItemDataRole.UserRole))
+
+
+
+
 
 class CapturePage(QWidget):
     stop_capture_request = Signal()
