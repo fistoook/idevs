@@ -90,21 +90,20 @@ class HomePage(QWidget):
 
         self.layout = QVBoxLayout(self)
 
-        self.label = QLabel("Welcome. select your interface.")
+        self.welcome_label = QLabel("Welcome to IdevS :)")
+        self.welcome_label.setObjectName("welcomeLabel")
 
         # initilialize the interface tree, style it, and populate it
         self.interface_tree = QTreeWidget()
+        self.interface_tree.setObjectName("interfaceTree")
         self.interface_tree.setHeaderLabels(["Interface", "Address"])
         self.interface_tree.setColumnWidth(0, 200)
         self.interface_tree.setAlternatingRowColors(True)
+        self.interface_tree.doubleClicked.connect(self.request_capture)
         self.populate_interfaces(ifaces)
 
-        self.button = QPushButton("Select interface")
-        self.button.clicked.connect(self.request_capture)
-
-        self.layout.addWidget(self.label)
+        self.layout.addWidget(self.welcome_label)
         self.layout.addWidget(self.interface_tree)
-        self.layout.addWidget(self.button)
 
     def populate_interfaces(self, ifaces):
         self.interface_tree.clear()
@@ -167,12 +166,15 @@ class CapturePage(QWidget):
         self.header_layout = QHBoxLayout(self.header)
 
         # icons for the toggle cpature/stop button
-        self.capturing_icon = QIcon("assets/capturing-icon.svg")
-        self.stopped_icon = QIcon("assets/stopped-icon.svg")
+        self.capturing_icon = QIcon("assets/icons/capturing-icon.svg")
+        self.stopped_icon = QIcon("assets/icons/stopped-icon.svg")
+
+        self.iface_name = QLabel(f"{self.packet_reader.iface}")
+        self.iface_name.setObjectName("ifaceName")
 
         # capture stop button initialization
-        self.iface_name = QLabel(f"{self.packet_reader.iface}")
         self.capture_button = QToolButton()
+        self.capture_button.setObjectName("captureButton")
         self.capture_button.setIcon(self.capturing_icon)
         self.capture_button.setCheckable(True)
         self.capture_button.setIconSize(QSize(24, 24))

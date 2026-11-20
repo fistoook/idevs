@@ -1,0 +1,47 @@
+QLabel#welcomeLabel {
+    color: #C8DDBF;
+    font-size: 24px;
+    font-weight: bold;
+    padding: 12px 8px;
+}
+
+QTreeWidget#interfaceTree {
+    background-color: #1D2620;
+    alternate-background-color: #222D25;
+
+    color: #E4EBE5;
+
+    border: 1px solid #354639;
+    border-radius: 8px;
+
+    outline: none;
+    show-decoration-selected: 1;
+
+    selection-background-color: #3B5842;
+    selection-color: #FFFFFF;
+}
+
+QTreeWidget#interfaceTree::item {
+    padding: 7px 6px;
+    border-bottom: 1px solid #2B382F;
+}
+
+QTreeWidget#interfaceTree::item:hover {
+    background-color: #2F4034;
+}
+
+QTreeWidget#interfaceTree::item:selected {
+    background-color: #3B5842;
+    color: #FFFFFF;
+}
+
+QTreeWidget#interfaceTree QHeaderView::section {
+    background-color: #26342A;
+    color: #BFD4BB;
+
+    border: none;
+    border-bottom: 1px solid #405443;
+
+    padding: 8px;
+    font-weight: bold;
+}

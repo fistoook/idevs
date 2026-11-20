@@ -1,0 +1,45 @@
+QLabel#ifaceName {
+    background: transparent;
+    color: #C8DDBF;
+
+    font-size: 16px;
+    font-weight: 600;
+
+    padding: 6px 10px;
+}
+
+QToolButton#captureButton {
+    border: 1px solid transparent;
+    border-radius: 7px;
+
+    padding: 8px;
+    min-width: 28px;
+    min-height: 28px;
+}
+
+QToolButton#captureButton:!checked {
+    background-color: #C65D5D;
+    border-color: #D77474;
+}
+
+QToolButton#captureButton:checked {
+    background-color: #70A985;
+    border-color: #91C29B;
+}
+
+QToolButton#captureButton:!checked:hover {
+    background-color: #DB7373;
+}
+
+QToolButton#captureButton:checked:hover {
+    background-color: #86BC98;
+}
+
+QToolButton#captureButton:pressed {
+    background-color: #405A47;
+}
+
+QToolButton#captureButton:disabled {
+    background-color: #303B33;
+    border-color: #435045;
+}

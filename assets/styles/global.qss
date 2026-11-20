@@ -1,0 +1,38 @@
+QWidget {
+    background-color: #171D1A;
+    color: #E4EBE5;
+    font-family: "Segoe UI";
+    font-size: 13px;
+}
+
+QLabel {
+    background: transparent;
+}
+
+QPushButton, QToolButton {
+    background-color: #28332C;
+    color: #E4EBE5;
+    border: 1px solid #3B4B3E;
+    border-radius: 6px;
+    padding: 6px 10px;
+}
+
+QPushButton:hover, QToolButton:hover {
+    background-color: #344238;
+}
+
+QPushButton:pressed, QToolButton:pressed {
+    background-color: #425647;
+}
+
+QPushButton:disabled, QToolButton:disabled {
+    color: #77867B;
+    background-color: #222A25;
+}
+
+QToolTip {
+    background-color: #28332C;
+    color: #E4EBE5;
+    border: 1px solid #506451;
+    padding: 5px;
+}
