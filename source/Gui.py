@@ -1,5 +1,6 @@
-from PySide6.QtWidgets import QMainWindow, QLabel, QWidget, QVBoxLayout, QHBoxLayout, QGridLayout, QStackedWidget, QPushButton, QListWidget, QTableWidget, QTableWidgetItem
-from PySide6.QtCore import Qt, Signal, QTimer
+from PySide6.QtWidgets import QMainWindow, QLabel, QWidget, QVBoxLayout, QHBoxLayout, QGridLayout, QStackedWidget, QPushButton, QToolButton, QListWidget, QTableWidget, QTableWidgetItem
+from PySide6.QtCore import Qt, Signal, QTimer, QSize
+from PySide6.QtGui import QIcon
 from queue import Empty
 from errHandler import ReaderNotRunningError, InterfaceNotFoundError
 from scapy.all import IP, TCP, UDP, IPv6
@@ -32,11 +33,13 @@ class MainWindow(QMainWindow):
         self.pages.addWidget(self.capture_page)
 
     def init_connectors(self):
-        self.home_page.capture_request.connect(self.start_capture)
+        self.home_page.capture_request.connect(self.begin_capture)
         self.timer.timeout.connect(self.retrieve_packets)
-        self.capture_page.stop_capture_request.connect(self.stop)
+        self.capture_page.stop_capture_request.connect(self.stop_capture)
+        self.capture_page.resume_capture_request.connect(self.resume_capture)
 
-    def start_capture(self, interface):
+    def begin_capture(self, interface):
+        self.curr_interface = interface
         self.pages.setCurrentWidget(self.capture_page)
         try:
             self.packet_reader.read(interface)
@@ -44,7 +47,14 @@ class MainWindow(QMainWindow):
             return 
         
         self.timer.start(50)
+
+    def resume_capture(self):
+        try:
+            self.packet_reader.read(self.curr_interface)
+        except InterfaceNotFoundError:
+            return 
         
+        self.timer.start(50)
 
     def retrieve_packets(self):
         for _ in range(10):
@@ -54,7 +64,7 @@ class MainWindow(QMainWindow):
             except Empty:
                 return
 
-    def stop(self):
+    def stop_capture(self):
         try:
             self.packet_reader.stop()
         except ReaderNotRunningError:
@@ -62,8 +72,10 @@ class MainWindow(QMainWindow):
         except PermissionError:
             return
 
+        self.timer.stop()
+
     def closeEvent(self, event):
-        self.stop()
+        self.stop_capture()
         super().closeEvent(event)
 
 class HomePage(QWidget):
@@ -95,6 +107,7 @@ class HomePage(QWidget):
 
 class CapturePage(QWidget):
     stop_capture_request = Signal()
+    resume_capture_request = Signal()
 
     def __init__(self, packet_reader):
         super().__init__()
@@ -111,15 +124,34 @@ class CapturePage(QWidget):
         self.layout.addWidget(self.stats)
 
     def init_header(self):
+        # create the header widget, as a horizontal box 
         self.header = QWidget()
         self.header_layout = QHBoxLayout(self.header)
 
-        self.iface_name = QLabel(f"{self.packet_reader.iface}")
-        self.stop_button = QPushButton("Stop")
-        self.stop_button.clicked.connect(self.stop_capture_request.emit)
+        # icons for the toggle cpature/stop button
+        self.capturing_icon = QIcon("assets/capturing-icon.svg")
+        self.stopped_icon = QIcon("assets/stopped-icon.svg")
 
+        # capture stop button initialization
+        self.iface_name = QLabel(f"{self.packet_reader.iface}")
+        self.capture_button = QToolButton()
+        self.capture_button.setIcon(self.capturing_icon)
+        self.capture_button.setCheckable(True)
+        self.capture_button.setIconSize(QSize(24, 24))
+        self.capture_button.toggled.connect(self.toggle_capture)
+
+        # add the the qidgets to the layout
         self.header_layout.addWidget(self.iface_name)
-        self.header_layout.addWidget(self.stop_button)
+        self.header_layout.addWidget(self.capture_button)
+
+    def toggle_capture(self, checked):
+        if checked:
+            self.capture_button.setIcon(self.stopped_icon)
+            self.stop_capture_request.emit()
+        else:
+            self.capture_button.setIcon(self.capturing_icon)
+            self.resume_capture_request.emit()
+        
 
     def init_table(self):
         self.packet_table = QTableWidget(0, 5)
