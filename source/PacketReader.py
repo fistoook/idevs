@@ -10,6 +10,7 @@ class PacketReader:
         self.dropped_packets = 0
         self.captured_packets = 0
         self.iface = None
+        self.ifaces = get_working_ifaces()
 
     def read(self, source, type="live") -> PacketList:
         if type == "live":
@@ -50,7 +51,6 @@ class PacketReader:
 
 
     def get_ifaces(self):
-        self.ifaces = get_working_ifaces()
         return self.ifaces
 
     def stop(self): 

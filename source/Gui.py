@@ -44,6 +44,7 @@ class MainWindow(QMainWindow):
 
         try:
             self.packet_reader.read(interface)
+
         except InterfaceNotFoundError:
             return 
         
@@ -52,6 +53,7 @@ class MainWindow(QMainWindow):
     def resume_capture(self):
         try:
             self.packet_reader.read(self.curr_interface)
+
         except InterfaceNotFoundError:
             return 
         
@@ -62,14 +64,17 @@ class MainWindow(QMainWindow):
             try:
                 packet = self.packet_queue.get_nowait()
                 self.capture_page.display_packet(packet)
+
             except Empty:
                 return
 
     def stop_capture(self):
         try:
             self.packet_reader.stop()
+
         except ReaderNotRunningError:
             return
+        
         except PermissionError:
             return
 
@@ -131,7 +136,6 @@ class HomePage(QWidget):
             # do not show the details initally
             parent.setExpanded(False)
 
-
     def request_capture(self):
         self.interface = self.interface_tree.currentItem()
 
@@ -169,7 +173,7 @@ class CapturePage(QWidget):
         self.capturing_icon = QIcon("assets/icons/capturing-icon.svg")
         self.stopped_icon = QIcon("assets/icons/stopped-icon.svg")
 
-        self.iface_name = QLabel(f"{self.packet_reader.iface}")
+        self.iface_name = QLabel(f"{type(self.packet_reader.iface)}")
         self.iface_name.setObjectName("ifaceName")
 
         # capture stop button initialization
@@ -188,6 +192,7 @@ class CapturePage(QWidget):
         if checked:
             self.capture_button.setIcon(self.stopped_icon)
             self.stop_capture_request.emit()
+
         else:
             self.capture_button.setIcon(self.capturing_icon)
             self.resume_capture_request.emit()
@@ -221,7 +226,7 @@ class CapturePage(QWidget):
         self.packet_table.setItem(row, 3, QTableWidgetItem(protocl))
         self.packet_table.setItem(row, 4, QTableWidgetItem(str(len(packet))))
 
-        self.iface_name.setText(f"{self.packet_reader.iface}")
+        self.iface_name.setText(f"{self.packet_reader.iface.name}")
         self.captured_label.setText(f"Captured: {self.packet_reader.captured_packets}")
         self.dropped_label.setText(f"dropped: {self.packet_reader.dropped_packets}")
 
