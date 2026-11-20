@@ -201,6 +201,7 @@ class CapturePage(QWidget):
     def init_table(self):
         self.packet_table = QTableWidget(0, 5)
         self.packet_table.setHorizontalHeaderLabels(["Number", "Source", "Destanation", "Protocl", "Length"])
+        self.packet_table.verticalHeader().setVisible(False)
 
     def init_stats(self):
         self.stats = QWidget()
