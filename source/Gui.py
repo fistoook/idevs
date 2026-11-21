@@ -1,5 +1,8 @@
-from PySide6.QtWidgets import QMainWindow, QLabel, QWidget, QVBoxLayout, QHBoxLayout, QGridLayout, QStackedWidget, QPushButton, QToolButton, QListWidget, QTableWidget, QTableWidgetItem, QTreeWidget, QTreeWidgetItem, QMessageBox
-from PySide6.QtCore import Qt, Signal, QTimer, QSize, QPointF
+from PySide6.QtWidgets import (QMainWindow, QLabel, QWidget, QVBoxLayout, QHBoxLayout, 
+                               QGridLayout, QStackedWidget, QPushButton, QToolButton, 
+                               QListWidget, QTableWidget, QTableWidgetItem, QTreeWidget, 
+                               QTreeWidgetItem, QMessageBox, QHeaderView)
+from PySide6.QtCore import Qt, Signal, QTimer, QSize, QPointF, QSignalBlocker
 from PySide6.QtGui import QIcon, QPainter, QPen, QColor, QPolygonF
 from queue import Empty
 from errHandler import ReaderNotRunningError, InterfaceNotFoundError
@@ -44,6 +47,7 @@ class MainWindow(QMainWindow):
 
     def begin_capture(self, interface):
         self.curr_interface = interface
+        self.capture_page.iface_name.setText(interface)
         self.pages.setCurrentWidget(self.capture_page)
 
         try:
@@ -57,7 +61,7 @@ class MainWindow(QMainWindow):
     def resume_capture(self):
         try:
             self.packet_reader.read(self.curr_interface)
-            self.capture_page.capture_button.setIcon(self.capture_page.capturing_icon)
+            self.capture_page.set_capture_state(True)
 
         except InterfaceNotFoundError:
             return 
@@ -77,6 +81,7 @@ class MainWindow(QMainWindow):
                     QMessageBox.warning(self, "Capture failed", str(error))
                     return
 
+                self.capture_page.capture_button.setEnabled(True)
                 packet = self.packet_queue.get_nowait()
                 self.capture_page.display_packet(packet)
 
@@ -85,14 +90,17 @@ class MainWindow(QMainWindow):
 
     def stop_capture(self):
         try:
+            self.capture_page.capture_button.setEnabled(False)
             self.packet_reader.stop()
-            self.capture_page.capture_button.setIcon(self.capture_page.stopped_icon)
-        except ReaderNotRunningError:
+            self.capture_page.set_capture_state(False)
+        except (ReaderNotRunningError, PermissionError):
+            self.timer.stop()
+            self.capture_page.capture_button.setEnabled(False)
+            self.pages.setCurrentWidget(self.home_page)
+            self.home_page.timer.start()
+            QMessageBox.warning(self, "Capture failed", str("stopping failed"))
             return
-        
-        except PermissionError:
-            return
-
+        self.capture_page.capture_button.setEnabled(True)
         self.timer.stop()
 
     def closeEvent(self, event):
@@ -126,7 +134,9 @@ class HomePage(QWidget):
         self.interface_tree = QTreeWidget()
         self.interface_tree.setObjectName("interfaceTree")
         self.interface_tree.setHeaderLabels(["Interface", "Address", "Activity"])
-        self.interface_tree.setColumnWidth(0, 200)
+        header = self.interface_tree.header()
+        header.setSectionResizeMode(0, QHeaderView.ResizeMode.ResizeToContents)
+        header.setSectionResizeMode(1, QHeaderView.ResizeMode.ResizeToContents)
         self.interface_tree.setAlternatingRowColors(True)
         self.interface_tree.doubleClicked.connect(self.request_capture)
         self.populate_interfaces(ifaces)
@@ -218,7 +228,7 @@ class CapturePage(QWidget):
         self.header = QWidget()
         self.header_layout = QHBoxLayout(self.header)
 
-        self.iface_name = QLabel(f"{type(self.packet_reader.iface)}")
+        self.iface_name = QLabel()
         self.iface_name.setObjectName("ifaceName")
 
         # icons for the toggle cpature/stop button
@@ -230,6 +240,7 @@ class CapturePage(QWidget):
         self.capture_button.setObjectName("captureButton")
         self.capture_button.setIcon(self.capturing_icon)
         self.capture_button.setCheckable(True)
+        self.capture_button.setEnabled(True)
         self.capture_button.setIconSize(QSize(24, 24))
         self.capture_button.toggled.connect(self.toggle_capture)
 
@@ -242,13 +253,14 @@ class CapturePage(QWidget):
             self.stop_capture_request.emit()
         else:
             self.resume_capture_request.emit()
-        
 
     def init_table(self):
         self.packet_table = QTableWidget(0, 5)
         self.packet_table.setHorizontalHeaderLabels(["Number", "Source", "Destanation", "Protocl", "Length"])
         self.packet_table.verticalHeader().setVisible(False)
         self.scroll_bar = self.packet_table.verticalScrollBar()
+        self.max_rows = 5000
+        self.packet_count = 0
 
     def init_stats(self):
         self.stats = QWidget()
@@ -261,12 +273,18 @@ class CapturePage(QWidget):
         self.stats_layout.addWidget(self.dropped_label)
 
     def display_packet(self, packet):
+        # check for too much rows
+        if self.packet_table.rowCount() >= self.max_rows:
+            self.packet_table.removeRow(0)
+
+        self.packet_count += 1
+
         at_bottom = (self.scroll_bar.value() == self.scroll_bar.maximum()) # check if user scrolled up
         row = self.packet_table.rowCount()
 
         self.packet_table.insertRow(row)
 
-        self.packet_table.setItem(row, 0, QTableWidgetItem(str(row + 1)))
+        self.packet_table.setItem(row, 0, QTableWidgetItem(str(self.packet_count)))
 
         src, dst = self.resolve_ips(packet)
         self.packet_table.setItem(row, 1, QTableWidgetItem(src))
@@ -276,13 +294,19 @@ class CapturePage(QWidget):
         self.packet_table.setItem(row, 3, QTableWidgetItem(protocl))
         self.packet_table.setItem(row, 4, QTableWidgetItem(str(len(packet))))
 
-        self.iface_name.setText(f"{self.packet_reader.iface.name}")
-
         if at_bottom:
             self.packet_table.scrollToBottom()
 
         self.captured_label.setText(f"Captured: {self.packet_reader.captured_packets}")
         self.dropped_label.setText(f"dropped: {self.packet_reader.dropped_packets}")
+
+    def set_capture_state(self, running):
+        # temprorialy stop the button from emitting more signals
+        with QSignalBlocker(self.capture_button):
+            self.capture_button.setChecked(not running)
+
+        icon = self.capturing_icon if running else self.stopped_icon
+        self.capture_button.setIcon(icon)
 
     def resolve_ips(self, packet) -> tuple:
         if IP in packet:

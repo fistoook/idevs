@@ -17,6 +17,10 @@ class PacketReader:
         if type == "live":
             self.iface = self.identify_iface(source)
 
+            # already running
+            if self.has_live_thread():
+                return
+            
             # start a background sniffing thread
             self.sniffer = AsyncSniffer(prn=self.handle_packet, store=False, iface=self.iface)
             self.sniffer.start()
@@ -52,6 +56,8 @@ class PacketReader:
         return self.ifaces
 
     def stop(self): 
+        if not self.has_live_thread():
+            return 
         try:
             self.sniffer.stop()
         except:
@@ -62,3 +68,10 @@ class PacketReader:
             return None
 
         return self.sniffer.exception
+
+    def has_live_thread(self) -> bool:
+        return (
+            self.sniffer is not None
+            and self.sniffer.thread is not None
+            and self.sniffer.thread.is_alive()
+        )
