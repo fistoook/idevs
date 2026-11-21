@@ -169,12 +169,12 @@ class CapturePage(QWidget):
         self.header = QWidget()
         self.header_layout = QHBoxLayout(self.header)
 
+        self.iface_name = QLabel(f"{type(self.packet_reader.iface)}")
+        self.iface_name.setObjectName("ifaceName")
+
         # icons for the toggle cpature/stop button
         self.capturing_icon = QIcon("assets/icons/capturing-icon.svg")
         self.stopped_icon = QIcon("assets/icons/stopped-icon.svg")
-
-        self.iface_name = QLabel(f"{type(self.packet_reader.iface)}")
-        self.iface_name.setObjectName("ifaceName")
 
         # capture stop button initialization
         self.capture_button = QToolButton()
@@ -202,6 +202,7 @@ class CapturePage(QWidget):
         self.packet_table = QTableWidget(0, 5)
         self.packet_table.setHorizontalHeaderLabels(["Number", "Source", "Destanation", "Protocl", "Length"])
         self.packet_table.verticalHeader().setVisible(False)
+        self.scroll_bar = self.packet_table.verticalScrollBar()
 
     def init_stats(self):
         self.stats = QWidget()
@@ -214,7 +215,9 @@ class CapturePage(QWidget):
         self.stats_layout.addWidget(self.dropped_label)
 
     def display_packet(self, packet):
+        at_bottom = (self.scroll_bar.value() == self.scroll_bar.maximum()) # check if user scrolled up
         row = self.packet_table.rowCount()
+
         self.packet_table.insertRow(row)
 
         self.packet_table.setItem(row, 0, QTableWidgetItem(str(row + 1)))
@@ -228,6 +231,10 @@ class CapturePage(QWidget):
         self.packet_table.setItem(row, 4, QTableWidgetItem(str(len(packet))))
 
         self.iface_name.setText(f"{self.packet_reader.iface.name}")
+        
+        if at_bottom:
+            self.packet_table.scrollToBottom()
+
         self.captured_label.setText(f"Captured: {self.packet_reader.captured_packets}")
         self.dropped_label.setText(f"dropped: {self.packet_reader.dropped_packets}")
 
