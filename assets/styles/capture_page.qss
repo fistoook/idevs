@@ -43,3 +43,27 @@ QToolButton#captureButton:disabled {
     background-color: #303B33;
     border-color: #435045;
 }
+
+QPushButton#backButton {
+    color: #C8DDBF;
+    background-color: #222D25;
+    border: 1px solid #354639;
+    border-radius: 5px;
+    padding: 3px 8px;
+    font-size: 12px;
+    min-width: 0px;
+    max-width: 44px;
+}
+
+QPushButton#backButton:hover {
+    background-color: #2F4034;
+    border-color: #70A985;
+}
+
+QPushButton#backButton:pressed {
+    background-color: #171D1A;
+}
+
+QPushButton#backButton:focus {
+    border-color: #91C29B;
+}

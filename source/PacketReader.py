@@ -1,6 +1,6 @@
 from scapy.all import *
 from pathlib import Path
-from queue import Full
+from queue import Full, Empty
 from errHandler import InterfaceNotFoundError, ReaderNotRunningError
 
 class PacketReader:
@@ -20,7 +20,9 @@ class PacketReader:
             # already running
             if self.has_live_thread():
                 return
-            
+
+            self.drain_queue()
+
             # start a background sniffing thread
             self.sniffer = AsyncSniffer(prn=self.handle_packet, store=False, iface=self.iface)
             self.sniffer.start()
@@ -43,6 +45,13 @@ class PacketReader:
 
         else:
             raise InterfaceNotFoundError
+
+    def drain_queue(self):
+        while True:
+            try:
+                self.packet_queue.get_nowait()
+            except Empty:
+                return
 
     def handle_packet(self, packet):
         try:

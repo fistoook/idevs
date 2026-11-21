@@ -44,11 +44,15 @@ class MainWindow(QMainWindow):
         self.timer.timeout.connect(self.retrieve_packets)
         self.capture_page.stop_capture_request.connect(self.stop_capture)
         self.capture_page.resume_capture_request.connect(self.resume_capture)
+        self.capture_page.back_to_homepage.connect(self.back_to_homepage)
 
     def begin_capture(self, interface):
         self.curr_interface = interface
         self.capture_page.iface_name.setText(interface)
         self.pages.setCurrentWidget(self.capture_page)
+        self.capture_page.set_capture_state(True)
+        self.capture_page.packet_table.setRowCount(0)
+        self.capture_page.packet_count = 0
 
         try:
             self.packet_reader.read(interface)
@@ -88,24 +92,31 @@ class MainWindow(QMainWindow):
             except Empty:
                 return
 
-    def stop_capture(self):
+    def stop_capture(self) -> bool:
         try:
             self.capture_page.capture_button.setEnabled(False)
             self.packet_reader.stop()
             self.capture_page.set_capture_state(False)
         except (ReaderNotRunningError, PermissionError):
-            self.timer.stop()
             self.capture_page.capture_button.setEnabled(False)
-            self.pages.setCurrentWidget(self.home_page)
             self.home_page.timer.start()
             QMessageBox.warning(self, "Capture failed", str("stopping failed"))
-            return
+            return False
+        
         self.capture_page.capture_button.setEnabled(True)
         self.timer.stop()
+
+        return True
 
     def closeEvent(self, event):
         self.stop_capture()
         super().closeEvent(event)
+
+    def back_to_homepage(self):
+        if self.stop_capture():
+            self.pages.setCurrentWidget(self.home_page)
+            self.home_page.timer.start()
+
 
 
 
@@ -208,6 +219,7 @@ class HomePage(QWidget):
 class CapturePage(QWidget):
     stop_capture_request = Signal()
     resume_capture_request = Signal()
+    back_to_homepage  = Signal()
 
     def __init__(self, packet_reader):
         super().__init__()
@@ -228,6 +240,12 @@ class CapturePage(QWidget):
         self.header = QWidget()
         self.header_layout = QHBoxLayout(self.header)
 
+        # back to home page button
+        self.back_button = QPushButton(text="back")
+        self.back_button.setObjectName("backButton")
+        self.back_button.clicked.connect(self.handle_back)
+
+        # interface name label
         self.iface_name = QLabel()
         self.iface_name.setObjectName("ifaceName")
 
@@ -245,8 +263,12 @@ class CapturePage(QWidget):
         self.capture_button.toggled.connect(self.toggle_capture)
 
         # add the the qidgets to the layout
+        self.header_layout.addWidget(self.back_button)
         self.header_layout.addWidget(self.iface_name)
         self.header_layout.addWidget(self.capture_button)
+
+    def handle_back(self):
+        self.back_to_homepage.emit()
 
     def toggle_capture(self, checked):
         if checked:
