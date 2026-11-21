@@ -1,4 +1,4 @@
-from PySide6.QtWidgets import QMainWindow, QLabel, QWidget, QVBoxLayout, QHBoxLayout, QGridLayout, QStackedWidget, QPushButton, QToolButton, QListWidget, QTableWidget, QTableWidgetItem, QTreeWidget, QTreeWidgetItem
+from PySide6.QtWidgets import QMainWindow, QLabel, QWidget, QVBoxLayout, QHBoxLayout, QGridLayout, QStackedWidget, QPushButton, QToolButton, QListWidget, QTableWidget, QTableWidgetItem, QTreeWidget, QTreeWidgetItem, QMessageBox
 from PySide6.QtCore import Qt, Signal, QTimer, QSize, QPointF
 from PySide6.QtGui import QIcon, QPainter, QPen, QColor, QPolygonF
 from queue import Empty
@@ -57,6 +57,7 @@ class MainWindow(QMainWindow):
     def resume_capture(self):
         try:
             self.packet_reader.read(self.curr_interface)
+            self.capture_page.capture_button.setIcon(self.capture_page.capturing_icon)
 
         except InterfaceNotFoundError:
             return 
@@ -66,6 +67,16 @@ class MainWindow(QMainWindow):
     def retrieve_packets(self):
         for _ in range(10):
             try:
+                error = self.packet_reader.check_sniffer()
+
+                if error is not None:
+                    self.timer.stop()
+                    self.capture_page.capture_button.setEnabled(False)
+                    self.pages.setCurrentWidget(self.home_page)
+                    self.home_page.timer.start()
+                    QMessageBox.warning(self, "Capture failed", str(error))
+                    return
+
                 packet = self.packet_queue.get_nowait()
                 self.capture_page.display_packet(packet)
 
@@ -75,7 +86,7 @@ class MainWindow(QMainWindow):
     def stop_capture(self):
         try:
             self.packet_reader.stop()
-
+            self.capture_page.capture_button.setIcon(self.capture_page.stopped_icon)
         except ReaderNotRunningError:
             return
         
@@ -170,11 +181,15 @@ class HomePage(QWidget):
         self.timer.start()
 
     def request_capture(self):
-        self.interface = self.interface_tree.currentItem()
+        item = self.interface_tree.currentItem()
 
-        if self.interface is not None:
-            self.timer.stop()
-            self.capture_request.emit(self.interface.data(0, Qt.ItemDataRole.UserRole))
+        if item is None: return
+
+        interface_name = item.data(0, Qt.ItemDataRole.UserRole)
+        if not interface_name: return
+
+        self.timer.stop()
+        self.capture_request.emit(interface_name)
 
 
 
@@ -224,11 +239,8 @@ class CapturePage(QWidget):
 
     def toggle_capture(self, checked):
         if checked:
-            self.capture_button.setIcon(self.stopped_icon)
             self.stop_capture_request.emit()
-
         else:
-            self.capture_button.setIcon(self.capturing_icon)
             self.resume_capture_request.emit()
         
 

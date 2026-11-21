@@ -11,13 +11,11 @@ class PacketReader:
         self.captured_packets = 0
         self.iface = None
         self.ifaces = get_working_ifaces()
+        self.sniffer = None
 
     def read(self, source, type="live") -> PacketList:
         if type == "live":
-            try:
-                self.iface = self.identify_iface(source)
-            except InterfaceNotFoundError:
-                return None 
+            self.iface = self.identify_iface(source)
 
             # start a background sniffing thread
             self.sniffer = AsyncSniffer(prn=self.handle_packet, store=False, iface=self.iface)
@@ -58,3 +56,9 @@ class PacketReader:
             self.sniffer.stop()
         except:
             raise ReaderNotRunningError
+
+    def check_sniffer(self):
+        if self.sniffer is None:
+            return None
+
+        return self.sniffer.exception
