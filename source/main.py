@@ -9,7 +9,7 @@ STYLES_DIR = ROOT_DIR / "assets" / "styles"
 STYLE_FILES = ["global.qss", "home_page.qss", "capture_page.qss"]
 
 def main():
-    packet_queue = Queue(maxsize=10000)
+    packet_queue = Queue(maxsize=5000)
     packet_reader = PacketReader(packet_queue)
 
     app = QApplication()

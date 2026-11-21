@@ -1,9 +1,12 @@
 from PySide6.QtWidgets import QMainWindow, QLabel, QWidget, QVBoxLayout, QHBoxLayout, QGridLayout, QStackedWidget, QPushButton, QToolButton, QListWidget, QTableWidget, QTableWidgetItem, QTreeWidget, QTreeWidgetItem
-from PySide6.QtCore import Qt, Signal, QTimer, QSize
-from PySide6.QtGui import QIcon
+from PySide6.QtCore import Qt, Signal, QTimer, QSize, QPointF
+from PySide6.QtGui import QIcon, QPainter, QPen, QColor, QPolygonF
 from queue import Empty
 from errHandler import ReaderNotRunningError, InterfaceNotFoundError
 from scapy.all import IP, TCP, UDP, IPv6
+from InterfaceActivityMonitor import InterfaceActivityMonitor
+from collections import deque
+
 
 class MainWindow(QMainWindow):
     def __init__(self, packet_reader, packet_queue):
@@ -11,6 +14,7 @@ class MainWindow(QMainWindow):
 
         self.packet_reader = packet_reader
         self.packet_queue = packet_queue
+
         self.timer = QTimer(self)
 
         self.setWindowTitle("IdevS")
@@ -93,28 +97,48 @@ class HomePage(QWidget):
     def __init__(self, ifaces):
         super().__init__()
 
+        # initlize interface activity monitor and timer for the graph view
+        self.interface_activity_monitor = InterfaceActivityMonitor()
+        self.interface_graphs = {}
+        self.timer = QTimer()
+        self.timer.timeout.connect(self.update_activity)
+        self.timer.setInterval(1000)
+
+        # vertical box layout
         self.layout = QVBoxLayout(self)
 
+        # initialize welcome label
         self.welcome_label = QLabel("Welcome to IdevS :)")
         self.welcome_label.setObjectName("welcomeLabel")
 
         # initilialize the interface tree, style it, and populate it
         self.interface_tree = QTreeWidget()
         self.interface_tree.setObjectName("interfaceTree")
-        self.interface_tree.setHeaderLabels(["Interface", "Address"])
+        self.interface_tree.setHeaderLabels(["Interface", "Address", "Activity"])
         self.interface_tree.setColumnWidth(0, 200)
         self.interface_tree.setAlternatingRowColors(True)
         self.interface_tree.doubleClicked.connect(self.request_capture)
         self.populate_interfaces(ifaces)
 
+        # add the widgets to layout
         self.layout.addWidget(self.welcome_label)
         self.layout.addWidget(self.interface_tree)
+
+    def update_activity(self):
+        sample = self.interface_activity_monitor.get_activity()
+
+        for name, graph in self.interface_graphs.items():
+            if name in sample:
+                graph.handle_sample(sample[name])
 
     def populate_interfaces(self, ifaces):
         self.interface_tree.clear()
 
         for iface in ifaces:
-            parent = QTreeWidgetItem(self.interface_tree, [iface.name or "Unknown", iface.ip or "-"])
+            graph = ActivityGraph()
+            self.interface_graphs[iface.name] = graph
+
+            parent = QTreeWidgetItem(self.interface_tree, [iface.name or "Unknown", iface.ip or "-", ""])
 
             # preserve the actual Scapy interface object for later
             parent.setData(0, Qt.ItemDataRole.UserRole, iface.name)
@@ -136,10 +160,20 @@ class HomePage(QWidget):
             # do not show the details initally
             parent.setExpanded(False)
 
+            # resize 
+            parent.setSizeHint(2, QSize(140, 30))
+
+            # add it to the interface tree
+            self.interface_tree.setItemWidget(parent, 2, graph)
+
+        # start the graoh activity timer    
+        self.timer.start()
+
     def request_capture(self):
         self.interface = self.interface_tree.currentItem()
 
         if self.interface is not None:
+            self.timer.stop()
             self.capture_request.emit(self.interface.data(0, Qt.ItemDataRole.UserRole))
 
 
@@ -231,7 +265,7 @@ class CapturePage(QWidget):
         self.packet_table.setItem(row, 4, QTableWidgetItem(str(len(packet))))
 
         self.iface_name.setText(f"{self.packet_reader.iface.name}")
-        
+
         if at_bottom:
             self.packet_table.scrollToBottom()
 
@@ -254,3 +288,46 @@ class CapturePage(QWidget):
         if TCP in packet: return "TCP"
         elif UDP in packet: return "UDP"
         else: return "UnKnown"
+
+
+
+
+
+
+
+class ActivityGraph(QWidget):
+    def __init__(self):
+        super().__init__()
+
+        self.history = deque([0] * 40, maxlen=40)
+
+        self.set_options()
+
+    def set_options(self):
+        self.setFixedSize(130, 22)
+        self.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
+        self.setAutoFillBackground(True)
+
+    def handle_sample(self, sample):
+        self.history.append(sample)
+        self.update()
+
+    def paintEvent(self, event):
+        painter = QPainter(self)
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+
+        width = max(1, self.width() - 8)
+        height = max(1, self.height() - 8)
+
+        maximum = max(max(self.history), 1)
+
+        points = QPolygonF()
+
+        for i, value in enumerate(self.history):
+            x = 4 + i * width / (len(self.history) - 1)
+            y = 4 + height - (value / maximum) * height
+
+            points.append(QPointF(x, y))
+
+        painter.setPen(QPen(QColor("#A9D59C"), 1))
+        painter.drawPolyline(points)
